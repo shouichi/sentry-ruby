@@ -2,7 +2,11 @@ require 'sentry/sidekiq/context_filter'
 
 module Sentry
   module Sidekiq
-    class SentryContextMiddleware
+    class SentryContextServerMiddleware
+      def initialize(testing_only_callback: nil)
+        @testing_only_callback = testing_only_callback
+      end
+
       def call(_worker, job, queue)
         return yield unless Sentry.initialized?
 
@@ -10,11 +14,16 @@ module Sentry
 
         Sentry.clone_hub_to_current_thread
         scope = Sentry.get_current_scope
+        if (user = job["sentry_user"])
+          scope.set_user(user)
+        end
         scope.set_tags(queue: queue, jid: job["jid"])
         scope.set_contexts(sidekiq: job.merge("queue" => queue))
         scope.set_transaction_name(context_filter.transaction_name)
         transaction = Sentry.start_transaction(name: scope.transaction_name, op: "sidekiq")
         scope.set_span(transaction) if transaction
+
+        @testing_only_callback.call(scope) if @testing_only_callback
 
         begin
           yield
@@ -34,6 +43,16 @@ module Sentry
 
         transaction.set_http_status(status)
         transaction.finish
+      end
+    end
+
+    class SentryContextClientMiddleware
+      def call(_worker_class, job, _queue, _redis_pool)
+        return yield unless Sentry.initialized?
+
+        scope = Sentry.get_current_scope
+        job["sentry_user"] = scope.user
+        yield
       end
     end
   end

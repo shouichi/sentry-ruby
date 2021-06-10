@@ -1,6 +1,10 @@
 require "bundler/setup"
 require "pry"
 
+# This allows us to call sidekiq private methods for testing.
+# Make sure to set this before requiring sidekiq.
+$TESTING = true
+
 # this enables sidekiq's server mode
 require "sidekiq/cli"
 # require "support/test_sidekiq_app/app"
