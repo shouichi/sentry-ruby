@@ -63,12 +63,12 @@ RSpec.describe Sentry::Sidekiq::SentryContextClientMiddleware do
 
   before { perform_basic_setup }
 
-  it "sets empty hash to the job if user is absence in the current scope" do
+  it "does not user to the job if user is absence in the current scope" do
     queue = random_empty_queue
     client.push('queue' => queue.name, 'class' => TestWorker, 'args' => [])
 
     expect(queue.size).to be(1)
-    expect(queue.first["sentry_user"]).to be_empty
+    expect(queue.first["sentry_user"]).to be_nil
   end
 
   it "sets user of the current scope to the job if present" do

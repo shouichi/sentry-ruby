@@ -50,8 +50,8 @@ module Sentry
       def call(_worker_class, job, _queue, _redis_pool)
         return yield unless Sentry.initialized?
 
-        scope = Sentry.get_current_scope
-        job["sentry_user"] = scope.user
+        user = Sentry.get_current_scope.user
+        job["sentry_user"] = user unless user.empty?
         yield
       end
     end
