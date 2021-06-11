@@ -41,6 +41,33 @@ RSpec.describe Sentry::Sidekiq::SentryContextServerMiddleware do
     expect(event).not_to be_nil
     expect(event.user).to eq(user)
   end
+
+  it "sets user to the current scope from the job even if worker raises an exception" do
+    perform_basic_setup do |config|
+      config.traces_sample_rate = 1.0
+    end
+
+    user = { "id" => rand(10_000) }
+    Sentry.set_user(user)
+
+    queue = random_empty_queue
+    options = { fetch: Sidekiq::BasicFetch.new(queues: [queue.name]) }
+    processor = Sidekiq::Processor.new(nil, options)
+
+    client.push('queue' => queue.name, 'class' => SadWorker, 'args' => [])
+
+    expect(queue.size).to be(1)
+    begin
+      processor.process_one
+    rescue RuntimeError
+      # do nothing
+    end
+    expect(queue.size).to be(1)
+
+    event = Sentry.get_current_client.transport.events.first
+    expect(event).not_to be_nil
+    expect(event.user).to eq(user)
+  end
 end
 
 RSpec.describe Sentry::Sidekiq::SentryContextClientMiddleware do
