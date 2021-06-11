@@ -3,10 +3,6 @@ require 'sentry/sidekiq/context_filter'
 module Sentry
   module Sidekiq
     class SentryContextServerMiddleware
-      def initialize(testing_only_callback: nil)
-        @testing_only_callback = testing_only_callback
-      end
-
       def call(_worker, job, queue)
         return yield unless Sentry.initialized?
 
@@ -22,8 +18,6 @@ module Sentry
         scope.set_transaction_name(context_filter.transaction_name)
         transaction = Sentry.start_transaction(name: scope.transaction_name, op: "sidekiq")
         scope.set_span(transaction) if transaction
-
-        @testing_only_callback.call(scope) if @testing_only_callback
 
         begin
           yield
